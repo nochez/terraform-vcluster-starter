@@ -1,2 +1,3 @@
 modules/nomad_cluster/images
+*.swp
 
