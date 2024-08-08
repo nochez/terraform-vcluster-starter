@@ -1,3 +1,4 @@
 modules/nomad_cluster/images
+modules/nomad_cluster/
 *.swp
 .DS_Store
