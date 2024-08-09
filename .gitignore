@@ -3,4 +3,5 @@ modules/nomad_cluster/
 modules/wireguard-configs/
 modules/.vagrant
 *.swp
+*.bkp
 .DS_Store

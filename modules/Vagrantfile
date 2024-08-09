@@ -1,11 +1,11 @@
 Vagrant.configure("2") do |config|
 
-  # Define the k3s VM
-  config.vm.define "k3s-vm" do |k3s|
-    k3s.vm.box = "opensuse/Leap-15.5.aarch64"
+  # Base box creation
+  config.vm.define "basebox" do |base|
+    base.vm.box = "opensuse/Leap-15.5.aarch64"
 
-    # Use the qemu provider
-    k3s.vm.provider "qemu" do |qemu|
+    # Use qemu
+    base.vm.provider "qemu" do |qemu|
       qemu.qemu_binary = "/usr/local/bin/qemu-system-aarch64"
       qemu.qemu_dir    = "/usr/local/share/qemu"
       qemu.memory      = 2048
@@ -14,79 +14,35 @@ Vagrant.configure("2") do |config|
       qemu.machine     = "virt,accel=hvf,highmem=off"
       qemu.arch        = "aarch64"
       qemu.cpu         = "host"
-      qemu.ssh_port    = 50023  
-  end
-
-    # SSH configuration
-    k3s.ssh.username   = "vagrant"
-    k3s.ssh.insert_key = false
-
-    # Provisioning k3s
-    k3s.vm.provision "shell", inline: <<-SHELL
-      echo 'Installing k3s'
-      curl -sfL https://get.k3s.io | sh -
-      # Fix k3s file permission
-      sudo chmod 644 /etc/rancher/k3s/k3s.yaml
-
-      echo 'Installing WireGuard'
-      zypper -n install wireguard-tools iptables
-
-      echo 'Configuring WireGuard for VM1'
-      sudo mkdir -p /etc/wireguard
-      sudo cp /vagrant/wireguard-configs/wg0-vm1.conf /etc/wireguard/wg0.conf
-      sudo chmod 600 /etc/wireguard/wg0.conf
-      sudo wg-quick up wg0
-    SHELL
-  end
-
-  # Define the Nomad VM1
-  config.vm.define "nomad-vm1" do |nomad1|
-    nomad1.vm.box = "opensuse/Leap-15.5.aarch64"
-
-    # Use the qemu provider
-    nomad1.vm.provider "qemu" do |qemu|
-      qemu.qemu_binary = "/usr/local/bin/qemu-system-aarch64"
-      qemu.qemu_dir    = "/usr/local/share/qemu"
-      qemu.memory      = 2048
-      qemu.cpus        = 2
-      qemu.disk_size   = "20G"
-      qemu.machine     = "virt,accel=hvf,highmem=off"
-      qemu.arch        = "aarch64"
-      qemu.cpu         = "host"
-      qemu.ssh_port    = 50024
     end
 
-    # SSH configuration
-    nomad1.ssh.username   = "vagrant"
-    nomad1.ssh.insert_key = false
+    # SSH config
+    base.ssh.username = "vagrant"
+    base.ssh.insert_key = false
 
-    # Provisioning HashiCorp Nomad and WireGuard
-    nomad1.vm.provision "shell", inline: <<-SHELL
-      echo 'Installing HashiCorp Nomad'
+    base.vm.provision "shell", inline: <<-SHELL
+      echo 'Installing WireGuard'
       zypper refresh
+      zypper -n install wireguard-tools iptables
+
+      echo 'Downloading k3s installation script'
+      curl -o /usr/local/bin/k3s_install.sh -sfL https://get.k3s.io
+      chmod +x /usr/local/bin/k3s_install.sh
+
+      echo 'Downloading HashiCorp Nomad'
       zypper -n install wget unzip
       wget https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_arm64.zip
       unzip nomad_1.8.2_linux_arm64.zip
       sudo mv nomad /usr/local/bin/
-      nomad --version
-
-      echo 'Installing WireGuard'
-      zypper -n install wireguard-tools iptables
-
-      echo 'Configuring WireGuard for VM2'
-      sudo mkdir -p /etc/wireguard
-      sudo cp /vagrant/wireguard-configs/wg0-vm2.conf /etc/wireguard/wg0.conf
-      sudo chmod 600 /etc/wireguard/wg0.conf
-      sudo wg-quick up wg0
     SHELL
   end
 
-  # Define the Nomad VM2
-  config.vm.define "nomad-vm2" do |nomad2|
-    nomad2.vm.box = "opensuse/Leap-15.5.aarch64"
+#  config.vm.box = "custom-opensuse-leap15.5.aarch64"
 
-    # Use the qemu provider
-    nomad2.vm.provider "qemu" do |qemu|
+  def configure_vm(vm, vm_name, ssh_port, wireguard_conf, provision_command)
+    vm.vm.box = "custom-opensuse-leap-15-5.aarch64"
+
+    vm.vm.provider "qemu" do |qemu|
       qemu.qemu_binary = "/usr/local/bin/qemu-system-aarch64"
       qemu.qemu_dir    = "/usr/local/share/qemu"
       qemu.memory      = 2048
@@ -95,73 +51,37 @@ Vagrant.configure("2") do |config|
       qemu.machine     = "virt,accel=hvf,highmem=off"
       qemu.arch        = "aarch64"
       qemu.cpu         = "host"
-      qemu.ssh_port    = 50025
+      qemu.ssh_port    = ssh_port
     end
 
-    # SSH configuration
-    nomad2.ssh.username   = "vagrant"
-    nomad2.ssh.insert_key = false
+    vm.ssh.username   = "vagrant"
+    vm.ssh.insert_key = false
 
-    # Provisioning HashiCorp Nomad and WireGuard
-    nomad2.vm.provision "shell", inline: <<-SHELL
-      echo 'Installing HashiCorp Nomad'
-      zypper refresh
-      zypper -n install wget unzip
-      wget https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_arm64.zip
-      unzip nomad_1.8.2_linux_arm64.zip
-      sudo mv nomad /usr/local/bin/
-      nomad --version
-
-      echo 'Installing WireGuard'
-      zypper -n install wireguard-tools iptables
-
-      echo 'Configuring WireGuard for VM3'
+    # Shell provision for VM
+    vm.vm.provision "shell", inline: <<-SHELL
+      echo 'Configuring WireGuard with #{wireguard_conf}'
       sudo mkdir -p /etc/wireguard
-      sudo cp /vagrant/wireguard-configs/wg0-vm3.conf /etc/wireguard/wg0.conf
+      sudo cp /vagrant/wireguard-configs/#{wireguard_conf} /etc/wireguard/wg0.conf
       sudo chmod 600 /etc/wireguard/wg0.conf
       sudo wg-quick up wg0
+
+      echo 'Running #{provision_command} installation'
+      #{provision_command}
     SHELL
   end
 
-  # Define the Nomad VM3
-  config.vm.define "nomad-vm3" do |nomad3|
-    nomad3.vm.box = "opensuse/Leap-15.5.aarch64"
+  vms = [
+    {name: "k3s-vm", port: 50023, wireguard: "wg0-vm1.conf", command: "/usr/local/bin/k3s_install.sh"},
+    {name: "nomad-vm1", port: 50024, wireguard: "wg0-vm2.conf", command: "sudo nomad agent -dev"},
+    {name: "nomad-vm2", port: 50025, wireguard: "wg0-vm3.conf", command: "sudo nomad agent -dev"},
+    {name: "nomad-vm3", port: 50026, wireguard: "wg0-vm4.conf", command: "sudo nomad agent -dev"}
+  ]
 
-    # Use the qemu provider
-    nomad3.vm.provider "qemu" do |qemu|
-      qemu.qemu_binary = "/usr/local/bin/qemu-system-aarch64"
-      qemu.qemu_dir    = "/usr/local/share/qemu"
-      qemu.memory      = 2048
-      qemu.cpus        = 2
-      qemu.disk_size   = "20G"
-      qemu.machine     = "virt,accel=hvf,highmem=off"
-      qemu.arch        = "aarch64"
-      qemu.cpu         = "host"
-      qemu.ssh_port    = 50026
+  vms.each do |vm|
+    config.vm.define vm[:name] do |node|
+      configure_vm(node, vm[:name], vm[:port], vm[:wireguard], vm[:command])
     end
-
-    # SSH configuration
-    nomad3.ssh.username   = "vagrant"
-    nomad3.ssh.insert_key = false
-
-    # Provisioning HashiCorp Nomad and WireGuard
-    nomad3.vm.provision "shell", inline: <<-SHELL
-      echo 'Installing HashiCorp Nomad'
-      zypper refresh
-      zypper -n install wget unzip
-      wget https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_arm64.zip
-      unzip nomad_1.8.2_linux_arm64.zip
-      sudo mv nomad /usr/local/bin/
-      nomad --version
-
-      echo 'Installing WireGuard'
-      zypper -n install wireguard-tools iptables
-
-      echo 'Configuring WireGuard for VM4'
-      sudo mkdir -p /etc/wireguard
-      sudo cp /vagrant/wireguard-configs/wg0-vm4.conf /etc/wireguard/wg0.conf
-      sudo chmod 600 /etc/wireguard/wg0.conf
-      sudo wg-quick up wg0
-    SHELL
   end
 end
+
+
