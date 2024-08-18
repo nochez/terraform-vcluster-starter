@@ -1,0 +1,26 @@
+# nomad.hcl
+
+data_dir  = "/opt/nomad/data"
+bind_addr = "0.0.0.0"
+
+# Enable the client
+client {
+  enabled = true
+
+  cpu_total_compute = 1000
+
+  servers = [
+    {% for host in groups['nomad_server'] %}
+    "{{ host }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+
+# Plugin configuration for the raw_exec driver
+plugin "raw_exec" {
+  config {
+    enabled = true
+  }
+}
+
+

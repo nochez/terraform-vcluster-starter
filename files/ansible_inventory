@@ -1,0 +1,15 @@
+[k3s]
+192.168.10.2
+
+[nomad_server]
+192.168.10.3
+
+[nomad_clients]
+192.168.10.4
+192.168.10.5
+
+[all:vars]
+ansible_user=vagrant
+ansible_ssh_private_key_file=ansible_key
+ansible_python_interpreter=/usr/bin/python3
+

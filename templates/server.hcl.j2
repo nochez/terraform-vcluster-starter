@@ -1,0 +1,29 @@
+# server.hcl
+
+data_dir  = "/opt/nomad/data"
+bind_addr = "0.0.0.0"
+
+
+advertise {
+  http = "{{ inventory_hostname }}"  # HTTP API address
+  rpc  = "{{ inventory_hostname }}"  # RPC address
+  serf = "{{ inventory_hostname }}"  # Serf address
+}
+name = "node-{{ inventory_hostname }}"  # This will use the IP address as the node name
+
+
+# Enable the server
+server {
+  enabled          = true
+
+  bootstrap_expect = {{ groups['nomad_server'] | length }}
+
+  server_join {
+    retry_join = [
+      {% for host in groups['nomad_server'] %}
+      "{{ host }}"{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+}
+

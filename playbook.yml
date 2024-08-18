@@ -1,0 +1,106 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install required packages
+      zypper:
+        name:
+          - curl
+          - wget
+          - vim
+          - docker
+          - zip
+          - unzip
+        state: present
+
+    - name: Install k3s on k3s node
+      shell: curl -sfL https://get.k3s.io | sh -
+      when: "'k3s' in group_names"
+
+    - name: Get IP address of the wg0 interface
+      shell: ip -4 addr show wg0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+      register: wg0_ip
+      when: "'k3s' in group_names"
+
+    - name: Set node_ip fact
+      set_fact:
+        node_ip: "{{ wg0_ip.stdout }}"
+      when: "'k3s' in group_names"
+
+    - name: Generate k3s configuration file
+      template:
+        src: k3s-config.yaml.j2
+        dest: /etc/rancher/k3s/config.yaml
+        mode: '0644'
+      when: "'k3s' in group_names"
+
+    - name: Reload systemd to apply k3s changes
+      command: systemctl daemon-reload
+      when: "'k3s' in group_names"
+
+    - name: Restart k3s service
+      systemd:
+        name: k3s
+        state: restarted
+        enabled: yes
+      when: "'k3s' in group_names"
+
+    - name: Install kubectl in k3s for testing
+      shell: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
+        chmod +x kubectl
+        mv kubectl /usr/local/bin/
+      when: "'k3s' in group_names"
+
+    - name: Install Nomad on nomad nodes
+      get_url:
+        url: https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_arm64.zip
+        dest: /tmp/nomad.zip
+      when: "'nomad' in group_names"
+
+    - name: Unzip and install Nomad
+      unarchive:
+        src: /tmp/nomad.zip
+        dest: /usr/local/bin/
+        remote_src: yes
+      when: "'nomad' in group_names"
+
+    - name: Create Nomad configuration directory
+      file:
+        path: /etc/nomad.d
+        state: directory
+        mode: '0755'
+      when: "'nomad' in group_names"
+
+    - name: Generate Nomad configuration file from template
+      template:
+        src: templates/nomad.hcl.j2
+        dest: /etc/nomad.d/nomad.hcl
+        mode: '0644'
+      when: "'nomad' in group_names"
+
+    - name: Configure and start Nomad service
+      template:
+        src: nomad.service.j2
+        dest: /etc/systemd/system/nomad.service
+      when: "'nomad' in group_names"
+
+    - name: Reload systemd to apply changes
+      command: systemctl daemon-reload
+      when: "'nomad' in group_names"
+
+    - name: Start and enable Nomad service
+      systemd:
+        name: nomad
+        state: restarted
+        enabled: yes
+      when: "'nomad' in group_names"
+
+    - name: Fetch kubeconfig directly to local machine
+      fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ./k3s-{{ inventory_hostname }}.yaml
+        flat: yes
+        validate_checksum: no
+      when: "'k3s' in group_names"
+

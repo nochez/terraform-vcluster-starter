@@ -2,6 +2,11 @@ modules/nomad_cluster/images
 modules/nomad_cluster/
 modules/wireguard-configs/
 modules/.vagrant
+modules/
+wireguard-configs/
+.vagrant
+ansible_key*
+k3s-192.168.10.2.yaml
 *.swp
 *.bkp
 .DS_Store
