@@ -95,15 +95,38 @@
         state: started
         enabled: yes
 
+    - name: Wait for Nomad server to be ready
+      wait_for:
+        port: 4646
+        host: "{{ inventory_hostname }}"
+        delay: 10
+        timeout: 300
+
+    - name: Generate the bootstrap management token
+      command: /usr/local/bin/nomad acl bootstrap -json
+      register: bootstrap_token
+
+    - name: Set the bootstrap token as a fact
+      set_fact:
+        nomad_bootstrap_token: "{{ bootstrap_token.stdout | from_json }}"
+
+    - name: Store the bootstrap management token locally
+      delegate_to: localhost
+      copy:
+        content: "{{ bootstrap_token.stdout }}"
+        dest: ./nomad_bootstrap_token.json
+      become: no  # Make sure sudo is not used
+
+
 - hosts: nomad_clients
   become: yes
   tasks:
-    - name: Install Nomad on client nodes
+    - name: Install Nomad on server node
       get_url:
         url: https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_arm64.zip
         dest: /tmp/nomad.zip
 
-    - name: Unzip and install Nomad on clients
+    - name: Unzip and install Nomad on server
       unarchive:
         src: /tmp/nomad.zip
         dest: /usr/local/bin/
@@ -121,10 +144,12 @@
         dest: /etc/nomad.d/nomad.hcl
         mode: '0644'
 
-    - name: Configure and start Nomad service on clients
+    - name: Generate and configure Nomad service file
       template:
         src: templates/nomad.service.j2
         dest: /etc/systemd/system/nomad.service
+      vars:
+        bootstrap_token: "{{ hostvars[groups['nomad_server'][0]].nomad_bootstrap_token.SecretID }}"
 
     - name: Reload systemd to apply Nomad changes on clients
       command: systemctl daemon-reload

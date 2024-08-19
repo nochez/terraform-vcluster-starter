@@ -3,6 +3,9 @@ Description=Nomad Agent
 After=network.target
 
 [Service]
+{% if bootstrap_token is defined and bootstrap_token | length > 0 %}
+Environment="NOMAD_TOKEN={{ bootstrap_token }}"
+{% endif %}
 ExecStart=/usr/local/bin/nomad agent -config /etc/nomad.d/nomad.hcl
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process

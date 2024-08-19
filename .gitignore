@@ -10,3 +10,4 @@ k3s-192.168.10.2.yaml
 *.swp
 *.bkp
 .DS_Store
+nomad_bootstrap_token.json
