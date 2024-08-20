@@ -1,4 +1,61 @@
 ---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Check if WireGuard is running
+      become: yes
+      shell: "wg show | grep -q interface"
+      register: wg_status
+      ignore_errors: true
+
+    - name: Bring WireGuard VPN up with wg_setup.sh if WireGuard is not running
+      become: yes
+      shell: sh wg_setup.sh
+      args:
+        chdir: "{{ playbook_dir }}"
+      when: wg_status.failed
+
+    - name: Ensure VM ssh ports are available before proceeding
+      shell: sh check_ports.sh
+      args:
+        chdir: "{{ playbook_dir }}"
+      register: port_check_result
+      failed_when: port_check_result.rc != 0
+
+    - name: Ensure Vagrant is up
+      shell: vagrant up
+      args:
+        chdir: "{{ playbook_dir }}"
+      register: vagrant_up_result
+      ignore_errors: yes  # Continue even if Vagrant is already up
+
+    - name: Display Vagrant up result
+      debug:
+        var: vagrant_up_result.stdout_lines
+
+    - name: Check the status of Vagrant VMs
+      shell: vagrant status
+      args:
+        chdir: "{{ playbook_dir }}"  # Ensures the command runs in the directory containing the Vagrantfile
+      register: vagrant_status
+      ignore_errors: yes
+
+    - name: Display Vagrant status
+      debug:
+        var: vagrant_status.stdout_lines
+
+    - name: Show the WireGuard VPN
+      become: yes
+      shell: "wg show"
+      register: wg_status
+
+    - name: Display Vagrant status
+      debug:
+        var: wg_status.stdout_lines
+
+#########################        
+# Lets setup the VMs now!
+#########################        
 - hosts: all
   become: yes
   tasks:
@@ -16,9 +73,6 @@
 - hosts: k3s
   become: yes
   tasks:
-    - name: Install k3s on k3s node
-      shell: curl -sfL https://get.k3s.io | sh -
-
     - name: Get IP address of the wg0 interface
       shell: ip -4 addr show wg0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
       register: wg0_ip
@@ -26,6 +80,13 @@
     - name: Set node_ip fact
       set_fact:
         node_ip: "{{ wg0_ip.stdout }}"
+
+    - name: Install k3s on k3s node
+      shell: curl -sfL https://get.k3s.io | sh -
+      register: k3s_install_result
+      retries: 5         # Number of retries
+      delay: 30          # Wait 30 seconds between retries
+      until: k3s_install_result.rc == 0
 
     - name: Generate k3s configuration file
       template:
