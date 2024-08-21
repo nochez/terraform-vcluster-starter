@@ -116,6 +116,41 @@
         flat: yes
         validate_checksum: no
 
+    - name: Modify CoreDNS service to use LoadBalancer type
+      shell: |
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml  /usr/local/bin/kubectl patch svc kube-dns -n kube-system -p '{"spec": {"type": "LoadBalancer"}}'
+      register: patch_coredns
+
+###################################################
+# Set up k3s coreDNS as nameserver for all machines
+###################################################
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Get K3s VM IP from inventory
+      set_fact:
+        k3s_vm_ip: "{{ hostvars[groups['k3s'][0]]['inventory_hostname'] }}"
+
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install bind-utils package (for nslookup and dig)
+      zypper:
+        name: bind-utils
+        state: present
+
+    - name: Add K3s VM IP to /etc/resolv.conf
+      lineinfile:
+        path: /etc/resolv.conf
+        line: "nameserver {{ k3s_vm_ip }}"
+        insertafter: "^nameserver"
+        state: present
+
+    - name: Ensure the resolv.conf is updated by netconfig
+      shell: "netconfig update -f"
+      args:
+        warn: false
+
 - hosts: nomad_server
   become: yes
   tasks:
