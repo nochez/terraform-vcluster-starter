@@ -82,7 +82,7 @@
         node_ip: "{{ wg0_ip.stdout }}"
 
     - name: Install k3s on k3s node
-      shell: curl -sfL https://get.k3s.io | sh -
+      shell: curl -sfL https://get.k3s.io | sh -s - --cluster-cidr=10.244.0.0/16
       register: k3s_install_result
       retries: 5         # Number of retries
       delay: 30          # Wait 30 seconds between retries
@@ -116,6 +116,10 @@
         flat: yes
         validate_checksum: no
 
+    - name: Install Flannel CNI
+      shell: |
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
     - name: Modify CoreDNS service to use LoadBalancer type
       shell: |
         KUBECONFIG=/etc/rancher/k3s/k3s.yaml  /usr/local/bin/kubectl patch svc kube-dns -n kube-system -p '{"spec": {"type": "LoadBalancer"}}'
@@ -124,13 +128,6 @@
 ###################################################
 # Set up k3s coreDNS as nameserver for all machines
 ###################################################
-- hosts: localhost
-  gather_facts: no
-  tasks:
-    - name: Get K3s VM IP from inventory
-      set_fact:
-        k3s_vm_ip: "{{ hostvars[groups['k3s'][0]]['inventory_hostname'] }}"
-
 - hosts: all
   become: yes
   tasks:
@@ -139,18 +136,17 @@
         name: bind-utils
         state: present
 
-    - name: Add K3s VM IP to /etc/resolv.conf
-      lineinfile:
-        path: /etc/resolv.conf
-        line: "nameserver {{ k3s_vm_ip }}"
-        insertafter: "^nameserver"
-        state: present
+    - name: Override /etc/resolv.conf with K3s VM IP as nameserver using template
+      template:
+        src: resolv.conf.j2
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: '0644'
 
-    - name: Ensure the resolv.conf is updated by netconfig
-      shell: "netconfig update -f"
-      args:
-        warn: false
-
+###############################################
+# Lets move to setup all of the Nomad stuff now
+###############################################
 - hosts: nomad_server
   become: yes
   tasks:
