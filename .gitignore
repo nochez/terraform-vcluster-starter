@@ -6,7 +6,7 @@ modules/
 wireguard-configs/
 .vagrant
 ansible_key*
-k3s-192.168.10.2.yaml
+k3s-*.yaml
 *.swp
 *.bkp
 .DS_Store

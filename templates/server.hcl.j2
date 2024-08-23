@@ -27,6 +27,16 @@ server {
   }
 }
 
+client {
+  enabled = true
+  cpu_total_compute = 1000
+}
+
+plugin "raw_exec" {
+  config {
+    enabled = true
+  }
+}
 
 # Enable ACLs
 acl {

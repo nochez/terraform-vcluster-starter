@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Define the IP addresses and other variables
+# Define the IP addresses and other variables of my one VM to rule all services
 SERVER_IP="10.0.2.2"
-SERVER_PORT="51820"
-SERVER_VPN_IP="192.168.10.1/24"
-VM_IPS=("192.168.10.2/24" "192.168.10.3/24" "192.168.10.4/24" "192.168.10.5/24")
-VM_ALLOW=("192.168.10.2/32" "192.168.10.3/32" "192.168.10.4/32" "192.168.10.5/32")
-VM_NAMES=("vm1" "vm2" "vm3" "vm4")
+SERVER_PORT="51822"
+SERVER_VPN_IP="192.168.11.1/24"
+VM_IPS=("192.168.11.2/24")
+VM_ALLOW=("192.168.11.2/32")
+VM_NAMES=("vm1")
 CONFIG_DIR="./wireguard-configs"
 
 # Create the directory to store the configuration files
@@ -57,7 +57,7 @@ Address = ${VM_IPS[$i]}
 [Peer]
 PublicKey = $(cat server_public.key)
 Endpoint = $SERVER_IP:$SERVER_PORT
-AllowedIPs = 192.168.10.0/24
+AllowedIPs = 192.168.11.0/24
 PersistentKeepalive = 25
 " > $VM_CONFIG
 done

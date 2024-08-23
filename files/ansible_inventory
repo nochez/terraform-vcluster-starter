@@ -1,12 +1,8 @@
 [k3s]
-192.168.10.2
+192.168.11.2
 
 [nomad_server]
-192.168.10.3
-
-[nomad_clients]
-192.168.10.4
-192.168.10.5
+192.168.11.2
 
 [all:vars]
 ansible_user=vagrant

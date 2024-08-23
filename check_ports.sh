@@ -1,5 +1,5 @@
 #!/bin/bash
-PORTS=(50023 50024 50025 50026)
+PORTS=(60023)
 WAIT_TIME=5  # Wait between checks (seconds)
 TIMEOUT=300  # Time before giving up (seconds)
 

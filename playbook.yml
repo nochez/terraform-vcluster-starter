@@ -22,6 +22,15 @@
       register: port_check_result
       failed_when: port_check_result.rc != 0
 
+    - name: Check if the private SSH key for temp cluster exists
+      stat:
+        path: "{{ playbook_dir }}/ansible_key"
+      register: ssh_private_key
+
+    - name: Generate new SSH key pair if it does not exist
+      command: ssh-keygen -t rsa -b 2048 -f {{ playbook_dir }}/ansible_key -N ""
+      when: not ssh_private_key.stat.exists
+
     - name: Ensure Vagrant is up
       shell: vagrant up
       args:
@@ -125,25 +134,6 @@
         KUBECONFIG=/etc/rancher/k3s/k3s.yaml  /usr/local/bin/kubectl patch svc kube-dns -n kube-system -p '{"spec": {"type": "LoadBalancer"}}'
       register: patch_coredns
 
-###################################################
-# Set up k3s coreDNS as nameserver for all machines
-###################################################
-- hosts: all
-  become: yes
-  tasks:
-    - name: Install bind-utils package (for nslookup and dig)
-      zypper:
-        name: bind-utils
-        state: present
-
-    - name: Override /etc/resolv.conf with K3s VM IP as nameserver using template
-      template:
-        src: resolv.conf.j2
-        dest: /etc/resolv.conf
-        owner: root
-        group: root
-        mode: '0644'
-
 ###############################################
 # Lets move to setup all of the Nomad stuff now
 ###############################################
@@ -208,47 +198,4 @@
         content: "{{ bootstrap_token.stdout }}"
         dest: ./nomad_bootstrap_token.json
       become: no  # Make sure sudo is not used
-
-
-- hosts: nomad_clients
-  become: yes
-  tasks:
-    - name: Install Nomad on server node
-      get_url:
-        url: https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_arm64.zip
-        dest: /tmp/nomad.zip
-
-    - name: Unzip and install Nomad on server
-      unarchive:
-        src: /tmp/nomad.zip
-        dest: /usr/local/bin/
-        remote_src: yes
-
-    - name: Create Nomad configuration directory on clients
-      file:
-        path: /etc/nomad.d
-        state: directory
-        mode: '0755'
-
-    - name: Generate Nomad client configuration file from template
-      template:
-        src: templates/nomad.hcl.j2
-        dest: /etc/nomad.d/nomad.hcl
-        mode: '0644'
-
-    - name: Generate and configure Nomad service file
-      template:
-        src: templates/nomad.service.j2
-        dest: /etc/systemd/system/nomad.service
-      vars:
-        bootstrap_token: "{{ hostvars[groups['nomad_server'][0]].nomad_bootstrap_token.SecretID }}"
-
-    - name: Reload systemd to apply Nomad changes on clients
-      command: systemctl daemon-reload
-
-    - name: Start and enable Nomad service on clients
-      systemd:
-        name: nomad
-        state: started
-        enabled: yes
 

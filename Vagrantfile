@@ -47,10 +47,7 @@ Vagrant.configure("2") do |config|
 
   # Lets get 4 VMs
   vms = [
-    {name: "vm1", port: 50023, wireguard: "wg0-vm1.conf"},
-    {name: "vm2", port: 50024, wireguard: "wg0-vm2.conf"},
-    {name: "vm3", port: 50025, wireguard: "wg0-vm3.conf"},
-    {name: "vm4", port: 50026, wireguard: "wg0-vm4.conf"}
+    {name: "vm1", port: 60023, wireguard: "wg0-vm1.conf"}
   ]
 
   vms.each do |vm|
