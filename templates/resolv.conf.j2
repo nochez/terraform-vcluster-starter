@@ -1,3 +1,4 @@
 # /etc/resolv.conf
 nameserver {{ hostvars[groups['k3s'][0]]['inventory_hostname'] }}
+nameserver 8.8.8.8
 search default.svc.cluster.local svc.cluster.local cluster.local

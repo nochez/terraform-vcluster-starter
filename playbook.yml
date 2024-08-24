@@ -134,6 +134,14 @@
         KUBECONFIG=/etc/rancher/k3s/k3s.yaml  /usr/local/bin/kubectl patch svc kube-dns -n kube-system -p '{"spec": {"type": "LoadBalancer"}}'
       register: patch_coredns
 
+    - name: Deploy resolv.conf template
+      template:
+        src: templates/resolv.conf.j2
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: '0644'
+
 ###############################################
 # Lets move to setup all of the Nomad stuff now
 ###############################################
