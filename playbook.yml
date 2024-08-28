@@ -77,6 +77,7 @@
           - docker
           - zip
           - unzip
+          - bind-utils
         state: present
 
 - hosts: k3s
@@ -129,10 +130,32 @@
       shell: |
         KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
+    - name: Render the CoreDNS ConfigMap template on the node
+      template:
+        src: templates/coredns_cm.conf.j2
+        dest: /tmp/coredns_cm.conf
+
+    - name: Apply the CoreDNS ConfigMap using kubectl from within the cluster
+      shell: |
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl apply -f /tmp/coredns_cm.conf
+
     - name: Modify CoreDNS service to use LoadBalancer type
       shell: |
         KUBECONFIG=/etc/rancher/k3s/k3s.yaml  /usr/local/bin/kubectl patch svc kube-dns -n kube-system -p '{"spec": {"type": "LoadBalancer"}}'
       register: patch_coredns
+
+    - name: Restart CoreDNS deployment using kubectl from within the cluster
+      shell: |
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl -n kube-system rollout restart deployment coredns
+
+    - name: Wait until CoreDNS pods are running and ready
+      shell: |
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl -n kube-system wait --for=condition=Ready pod -l k8s-app=kube-dns --timeout=300s
+      register: wait_result
+      retries: 6
+      delay: 10
+      until: wait_result.rc == 0
+      ignore_errors: yes
 
     - name: Deploy resolv.conf template
       template:

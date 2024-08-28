@@ -4,6 +4,7 @@ modules/wireguard-configs/
 modules/.vagrant
 modules/
 wireguard-configs/
+current_coredns_corefile.conf
 .vagrant
 ansible_key*
 k3s-*.yaml

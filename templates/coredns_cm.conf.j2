@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+            pods insecure
+            fallthrough in-addr.arpa ip6.arpa
+        }
+        # importing a host file to load does not seem to work
+        #  but hardcoding the domain name for deployment here does work
+        hosts {
+            192.168.11.2 cluster.local
+            fallthrough
+        }
+        prometheus :9153
+        forward . 8.8.8.8
+        cache 30
+        loop
+        reload
+        loadbalance
+        import /etc/coredns/custom/*.override
+    }
+    import /etc/coredns/custom/*.server
+

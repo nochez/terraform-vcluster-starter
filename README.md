@@ -80,7 +80,7 @@ For issues with WireGuard, manually run wg show to check the status of the VPN.
 ## Nomad
 
 ```
-export NOMAD_TOKEN=<find it in nomad_bootstrap_token.json>
+export NOMAD_TOKEN=$(cat nomad_bootstrap_token.json | jq -r '.SecretID')
 export NOMAD_ADDR="http://192.168.11.2:4646"
 nomad node status
 ```
