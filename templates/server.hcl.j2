@@ -47,8 +47,8 @@ acl {
 tls {
   http = true
   rpc  = true
-  verify_server_hostname = true
-  verify_https_client    = true
+  verify_server_hostname = false
+  verify_https_client    = false
 
   ca_file   = "/etc/nomad.d/nomad_certificates/cluster.local-agent-ca.pem"
   cert_file = "/etc/nomad.d/nomad_certificates/vm-server-cluster.local.pem"

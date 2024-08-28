@@ -79,9 +79,25 @@ For issues with WireGuard, manually run wg show to check the status of the VPN.
 # Manual Testing
 ## Nomad
 
+
+-> % ll nomad_certificates
+total 64
+-rw-------  1 felipecr  staff   227B Aug 28 08:15 cluster.local-agent-ca-key.pem
+-rw-r--r--  1 felipecr  staff   1.1K Aug 28 08:15 cluster.local-agent-ca.pem
+-rw-------  1 felipecr  staff   227B Aug 28 08:15 vm-cli-cluster.local-key.pem
+-rw-r--r--  1 felipecr  staff   997B Aug 28 08:15 vm-cli-cluster.local.pem
+-rw-------  1 felipecr  staff   227B Aug 28 08:15 vm-client-cluster.local-key.pem
+-rw-r--r--  1 felipecr  staff   1.0K Aug 28 08:15 vm-client-cluster.local.pem
+-rw-------  1 felipecr  staff   227B Aug 28 08:15 vm-server-cluster.local-key.pem
+-rw-r--r--  1 felipecr  staff   1.0K Aug 28 08:15 vm-server-cluster.local.pem
+
 ```
+export NOMAD_CACERT=nomad_certificates/cluster.local-agent-ca.pem
+export NOMAD_CLIENT_CERT=nomad_certificates/vm-cli-cluster.local.pem
+export NOMAD_CLIENT_KEY=nomad_certificates/vm-cli-cluster.local-key.pem
 export NOMAD_TOKEN=$(cat nomad_bootstrap_token.json | jq -r '.SecretID')
-export NOMAD_ADDR="http://192.168.11.2:4646"
+export NOMAD_ADDR="https://192.168.11.2:4646"
+export NOMAD_SKIP_VERIFY="1"
 nomad node status
 ```
 

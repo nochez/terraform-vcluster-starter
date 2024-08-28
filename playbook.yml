@@ -231,7 +231,17 @@
 
     - name: Generate the bootstrap management token
       command: /usr/local/bin/nomad acl bootstrap -json
+      environment:
+        NOMAD_ADDR: https://{{ inventory_hostname }}:4646
+        NOMAD_CACERT: /etc/nomad.d/nomad_certificates/cluster.local-agent-ca.pem
+        NOMAD_CLIENT_CERT: /etc/nomad.d/nomad_certificates/vm-cli-cluster.local.pem
+        NOMAD_CLIENT_KEY: /etc/nomad.d/nomad_certificates/vm-cli-cluster.local-key.pem
+        NOMAD_SKIP_VERIFY: "1"
       register: bootstrap_token
+
+    - name: Display the bootstrap management token output
+      debug:
+        var: bootstrap_token.stdout
 
     - name: Set the bootstrap token as a fact
       set_fact:
