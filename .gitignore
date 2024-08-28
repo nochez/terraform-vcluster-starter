@@ -3,6 +3,7 @@ modules/nomad_cluster/
 modules/wireguard-configs/
 modules/.vagrant
 modules/
+nomad_certificates/
 wireguard-configs/
 current_coredns_corefile.conf
 .vagrant

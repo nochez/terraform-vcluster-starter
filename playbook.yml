@@ -188,6 +188,20 @@
         state: directory
         mode: '0755'
 
+    - name: Create Nomad certificates directory on server
+      file:
+        path: /etc/nomad.d/nomad_certificates
+        state: directory
+        mode: '0755'
+
+    - name: Copy all Nomad certificates to server
+      copy:
+        src: "{{ item }}"
+        dest: "/etc/nomad.d/nomad_certificates/"
+        mode: '0644'
+      with_fileglob:
+        - "nomad_certificates/*.pem"
+
     - name: Generate Nomad server configuration file from template
       template:
         src: templates/server.hcl.j2

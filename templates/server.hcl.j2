@@ -42,3 +42,15 @@ plugin "raw_exec" {
 acl {
   enabled = true
 }
+
+# Enable TLS
+tls {
+  http = true
+  rpc  = true
+  verify_server_hostname = true
+  verify_https_client    = true
+
+  ca_file   = "/etc/nomad.d/nomad_certificates/cluster.local-agent-ca.pem"
+  cert_file = "/etc/nomad.d/nomad_certificates/vm-server-cluster.local.pem"
+  key_file  = "/etc/nomad.d/nomad_certificates/vm-server-cluster.local-key.pem"
+}
