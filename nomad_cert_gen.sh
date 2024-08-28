@@ -11,10 +11,11 @@ COUNTRY="CH"
 DAYS_VALID=1825
 REGION="vm"
 NAME_CONSTRAINT="false"
-CERT_OUTPUT_DIR="./certificates"
+CERT_OUTPUT_DIR="./nomad_certificates"
 
 # Create and cleanup output directory
 mkdir -p "$CERT_OUTPUT_DIR"
+rm -f *.pem
 rm -f "$CERT_OUTPUT_DIR"/*.pem
 
 # Create Certificate Authority
@@ -30,8 +31,7 @@ nomad tls ca create \
  -province="$PROVINCE" \
  -country="$COUNTRY" \
  -days="$DAYS_VALID" \
- -name-constraint="$NAME_CONSTRAINT" \
- -out="$CERT_OUTPUT_DIR/ca.pem"
+ -name-constraint $NAME_CONSTRAINT
 
 # Function to check the exit status of the last command and exit if it failed
 check_last_command() {
@@ -46,8 +46,7 @@ nomad tls cert create \
  -server \
  -domain="$DOMAIN" \
  -region="$REGION" \
- -additional-dnsname="*.$DOMAIN" \
- -out="$CERT_OUTPUT_DIR/server.pem"
+ -additional-dnsname="*.$DOMAIN" 
 check_last_command "Server certificate generation"
 
 echo "Generating Wildcard Client Certificate..."
@@ -55,17 +54,16 @@ nomad tls cert create \
  -client \
  -domain="$DOMAIN" \
  -region="$REGION" \
- -additional-dnsname="*.$DOMAIN" \
- -out="$CERT_OUTPUT_DIR/client.pem"
+ -additional-dnsname="*.$DOMAIN" 
 check_last_command "Client certificate generation"
 
 echo "Generating CLI Certificate..."
 nomad tls cert create \
  -cli \
  -domain="$DOMAIN" \
- -region="$REGION" \
- -out="$CERT_OUTPUT_DIR/cli.pem"
+ -region="$REGION" 
 check_last_command "CLI certificate generation"
 
+mv *.pem "$CERT_OUTPUT_DIR/"
 echo "Certificates successfully generated into $CERT_OUTPUT_DIR"
 
