@@ -29,7 +29,22 @@ server {
 
 client {
   enabled = true
-  cpu_total_compute = 1000
+  cpu_total_compute = 2000
+
+  host_network {
+     public {
+      cidr = "192.168.11.2/24"
+    }
+  }
+
+}
+
+plugin_dir = "/tmp/nomad-driver-plugin/plugin"
+
+plugin "nomad-driver-podman" {
+  config {
+      socket_path = "unix:///var/run/podman/podman.sock"
+  }
 }
 
 plugin "raw_exec" {
