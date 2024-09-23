@@ -100,80 +100,6 @@
       set_fact:
         node_ip: "{{ wg0_ip.stdout }}"
 
-    - name: Install k3s on k3s node
-      shell: curl -sfL https://get.k3s.io | sh -s - --cluster-cidr=10.244.0.0/16
-      register: k3s_install_result
-      retries: 5         # Number of retries
-      delay: 30          # Wait 30 seconds between retries
-      until: k3s_install_result.rc == 0
-
-    - name: Generate k3s configuration file
-      template:
-        src: templates/k3s-config.yaml.j2  # Adjust this path to your actual template location if different
-        dest: /etc/rancher/k3s/config.yaml
-        mode: '0644'
-
-    - name: Reload systemd to apply k3s changes
-      command: systemctl daemon-reload
-
-    - name: Restart k3s service
-      systemd:
-        name: k3s
-        state: restarted
-        enabled: yes
-
-    - name: Install kubectl in k3s for testing
-      shell: |
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
-        chmod +x kubectl
-        mv kubectl /usr/local/bin/
-
-    - name: Fetch kubeconfig directly to local machine
-      fetch:
-        src: /etc/rancher/k3s/k3s.yaml
-        dest: ./k3s-{{ inventory_hostname }}.yaml
-        flat: yes
-        validate_checksum: no
-
-    - name: Install Flannel CNI
-      shell: |
-        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-
-    - name: Render the CoreDNS ConfigMap template on the node
-      template:
-        src: templates/coredns_cm.conf.j2
-        dest: /tmp/coredns_cm.conf
-
-    - name: Apply the CoreDNS ConfigMap using kubectl from within the cluster
-      shell: |
-        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl apply -f /tmp/coredns_cm.conf
-
-    - name: Modify CoreDNS service to use LoadBalancer type
-      shell: |
-        KUBECONFIG=/etc/rancher/k3s/k3s.yaml  /usr/local/bin/kubectl patch svc kube-dns -n kube-system -p '{"spec": {"type": "LoadBalancer"}}'
-      register: patch_coredns
-
-    - name: Restart CoreDNS deployment using kubectl from within the cluster
-      shell: |
-        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl -n kube-system rollout restart deployment coredns
-
-    - name: Wait until CoreDNS pods are running and ready
-      shell: |
-        KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl -n kube-system wait --for=condition=Ready pod -l k8s-app=kube-dns --timeout=300s
-      register: wait_result
-      retries: 6
-      delay: 10
-      until: wait_result.rc == 0
-      ignore_errors: yes
-
-    - name: Deploy resolv.conf template
-      template:
-        src: templates/resolv.conf.j2
-        dest: /etc/resolv.conf
-        owner: root
-        group: root
-        mode: '0644'
-
 ###############################################
 # Lets move to setup all of the Nomad stuff now
 ###############################################
@@ -192,7 +118,7 @@
 
     - name: Download the Nomad Podman driver
       get_url:
-        url: https://releases.hashicorp.com/nomad-driver-podman/0.6.1/nomad-driver-podman_0.6.1_linux_arm64.zip
+        url: https://releases.hashicorp.com/nomad-driver-podman/0.6.1/nomad-driver-podman_0.6.1_linux_amd64.zip
         dest: /tmp/nomad-driver-podman.zip
 
     - name: Ensure the Nomad driver plugin directory exists
@@ -209,7 +135,7 @@
 
     - name: Install Nomad on server node
       get_url:
-        url: https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_arm64.zip
+        url: https://releases.hashicorp.com/nomad/1.8.2/nomad_1.8.2_linux_amd64.zip
         dest: /tmp/nomad.zip
 
     - name: Unzip and install Nomad on server
