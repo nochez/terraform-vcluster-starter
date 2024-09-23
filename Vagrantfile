@@ -1,19 +1,22 @@
 Vagrant.configure("2") do |config|
 
   def configure_vm(vm, vm_name, ssh_port, wireguard_conf)
-    vm.vm.box = "opensuse/Tumbleweed.aarch64"
+    vm.vm.box = "opensuse/Tumbleweed.x86_64"
     vm.vm.synced_folder ".", "/vagrant", type: "rsync"
 
+
     vm.vm.provider "qemu" do |qemu|
-      qemu.qemu_binary = "/usr/local/bin/qemu-system-aarch64"
+      qemu.qemu_binary = "/usr/local/bin/qemu-system-x86_64"
       qemu.qemu_dir    = "/usr/local/share/qemu"
-      qemu.memory      = 2048
-      qemu.cpus        = 2
+      qemu.memory      = 4096
+      qemu.cpus        = 4
       qemu.disk_size   = "20G"
-      qemu.machine     = "virt,accel=hvf,highmem=off"
-      qemu.arch        = "aarch64"
-      qemu.cpu         = "host"
-      qemu.ssh_port    = ssh_port
+      qemu.machine     = "q35,accel=tcg"
+      qemu.arch        = "x86_64"
+      qemu.cpu         = "qemu64"
+
+      qemu.net_device = "virtio-net-pci"
+      qemu.customize ["-nic", "user,id=net0,hostfwd=tcp::#{ssh_port}-:22"]
     end
 
     vm.ssh.username   = "vagrant"
@@ -47,7 +50,7 @@ Vagrant.configure("2") do |config|
 
   # Lets get 4 VMs
   vms = [
-    {name: "vm1", port: 60023, wireguard: "wg0-vm1.conf"}
+    {name: "vm64", port: 60023, wireguard: "wg0-vm1.conf"}
   ]
 
   vms.each do |vm|
